@@ -14,11 +14,24 @@ export const STATUS_LABELS: Record<BookStatus, string> = {
 export const sortDate = (book: Book) =>
   book.data.readDate ?? book.data.recordedDate ?? new Date(0);
 
-/** 全書籍を新しい順で取得する */
+/** 全書籍を、読了日（なければ最終記録日）の新しい順で取得する（RSS 用） */
 export const getSortedBooks = async () =>
   (await getCollection('books')).toSorted(
     (a, b) => sortDate(b).valueOf() - sortDate(a).valueOf(),
   );
+
+/**
+ * 全書籍を、発売日の新しい順で取得する（本棚用）。
+ * 発売日は「2026-05-26」「2026-05」「2026」のような文字列なので、文字列のまま比べる。
+ * 発売日がない本は最後に置き、発売日が同じ本は読了日の新しい順にする
+ */
+export const getBooksByPublishedDate = async () =>
+  (await getCollection('books')).toSorted((a, b) => {
+    const dateA = a.data.publishedDate ?? '';
+    const dateB = b.data.publishedDate ?? '';
+    if (dateA !== dateB) return dateA < dateB ? 1 : -1;
+    return sortDate(b).valueOf() - sortDate(a).valueOf();
+  });
 
 /** 状態ごとの冊数を数える */
 export const countByStatus = (books: Book[]) => {

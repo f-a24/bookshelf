@@ -5,10 +5,10 @@ import Bookshelf from '../components/Bookshelf.astro';
 import Footer from '../components/Footer.astro';
 import LibraryRoom from '../components/LibraryRoom.astro';
 import { SITE_DESCRIPTION, SITE_TITLE } from '../consts';
-import { getSortedBooks } from '../lib/books';
+import { getBooksByPublishedDate } from '../lib/books';
 
-// 全冊を新しい順に1ページに並べ、表示する本は BookFilter で絞り込む
-const books = await getSortedBooks();
+// 全冊を発売日の新しい順に1ページに並べ、表示する本は BookFilter で絞り込む
+const books = await getBooksByPublishedDate();
 ---
 
 <!doctype html>
