@@ -137,13 +137,11 @@ const id = `book-${book.id}`;
     max-height: calc(100dvh - 2rem);
     padding: 0;
     border: none;
-    border-radius: 12px;
-    background: #fffdf8;
-    color: rgb(var(--gray-dark));
-    /* ページは暗い色だが、モーダルの中は明るい紙なのでスクロールバーなども明るくする */
-    color-scheme: light;
-    --focus: var(--accent);
-    box-shadow: 0 30px 60px rgba(0, 0, 0, 40%);
+    /* 暗い部屋の中で一段明るい面（明るい紙の色にはしない） */
+    border-radius: var(--radius-panel);
+    background: var(--color-paper-3);
+    color: var(--color-ink);
+    box-shadow: var(--shadow-modal);
 
     /*
       開閉のアニメーション。display と overlay も切り替えの対象にして、
@@ -152,11 +150,13 @@ const id = `book-${book.id}`;
     */
     opacity: 0;
     transition-property: opacity, display, overlay;
-    transition-duration: 0.25s;
-    transition-timing-function: ease;
+    transition-duration: var(--dur-short);
+    transition-timing-function: var(--ease-in);
     transition-behavior: allow-discrete;
 
     &[open] {
+      transition-duration: var(--dur-long);
+      transition-timing-function: var(--ease-out);
       opacity: 1;
 
       @starting-style {
@@ -172,40 +172,37 @@ const id = `book-${book.id}`;
     &::backdrop {
       overflow: hidden;
       overscroll-behavior: contain;
-      background: rgba(var(--black), 0%);
-      backdrop-filter: blur(0);
-      transition-property: background, backdrop-filter, display, overlay;
-      transition-duration: 0.25s;
-      transition-timing-function: ease;
+      background: var(--color-scrim);
+      opacity: 0;
+      transition-property: opacity, display, overlay;
+      transition-duration: var(--dur-short);
+      transition-timing-function: var(--ease-in);
       transition-behavior: allow-discrete;
     }
     &[open]::backdrop {
-      background: rgba(var(--black), 60%);
-      backdrop-filter: blur(3px);
+      opacity: 1;
+      transition-duration: var(--dur-long);
+      transition-timing-function: var(--ease-out);
     }
   }
   /* @starting-style の中では ::backdrop をネストできないので分けて書く */
   @starting-style {
     .book-modal[open]::backdrop {
-      background: rgba(var(--black), 0%);
-      backdrop-filter: blur(0);
+      opacity: 0;
     }
   }
 
   /* 動きを減らす設定でなければ、少し下から浮かび上がるようにする */
   @media (prefers-reduced-motion: no-preference) {
     .book-modal {
-      translate: 0 16px;
-      scale: 0.98;
-      transition-property: opacity, translate, scale, display, overlay;
+      translate: 0 8px;
+      transition-property: opacity, translate, display, overlay;
 
       &[open] {
         translate: 0;
-        scale: 1;
 
         @starting-style {
-          translate: 0 16px;
-          scale: 0.98;
+          translate: 0 8px;
         }
       }
     }
@@ -229,11 +226,13 @@ const id = `book-${book.id}`;
     background: transparent;
     font-size: 1.75rem;
     line-height: 1;
-    color: rgb(var(--gray));
+    color: var(--color-muted);
     cursor: pointer;
+    transition: background-color var(--dur-micro) var(--ease-out);
   }
   .close:hover {
-    background: rgb(var(--gray-light));
+    background: var(--color-paper-4);
+    color: var(--color-ink);
   }
 
   .head {
@@ -247,10 +246,8 @@ const id = `book-${book.id}`;
     height: auto;
     aspect-ratio: 1 / 1.414;
     object-fit: cover;
-    border-radius: 2px 4px 4px 2px;
-    box-shadow:
-      3px 0 0 #eee6d6,
-      6px 6px 16px rgba(0, 0, 0, 30%);
+    border-radius: var(--radius-book);
+    box-shadow: var(--shadow-book);
   }
   /* 表紙がない本（本棚と同じ布張りの見た目） */
   .no-cover {
@@ -258,56 +255,62 @@ const id = `book-${book.id}`;
     padding: 20% 12% 0 14%;
     overflow: clip;
     background: var(--cloth-cover);
-    color: var(--cloth-text);
+    color: var(--color-cloth-ink);
+    font-family: var(--font-display);
     font-weight: bold;
     line-height: 1.5;
     word-break: break-all;
   }
   .info h2 {
     margin: 0 2rem 0.5rem 0;
+    font-family: var(--font-display);
     font-size: 1.5rem;
+    font-weight: 700;
     line-height: 1.4;
+    overflow-wrap: break-word;
+    min-width: 0;
   }
   .authors {
     margin: 0 0 0.5rem;
-    color: rgb(var(--gray));
+    font-size: 1rem;
+    color: var(--color-muted);
   }
   .rating {
     margin: 0 0 0.75rem;
-    color: #e0a526;
-    letter-spacing: 0.1em;
+    color: var(--color-accent);
   }
   .rating span {
-    color: rgb(var(--gray-light));
+    color: var(--color-paper-4);
   }
   dl {
     display: grid;
     grid-template-columns: auto 1fr;
     gap: 0.25rem 1rem;
     margin: 0 0 1rem;
-    font-size: 0.85rem;
+    font-size: 0.875rem;
+    font-variant-numeric: tabular-nums;
   }
   dt {
-    color: rgb(var(--gray));
+    color: var(--color-muted);
   }
   dd {
     margin: 0;
   }
   .status {
     padding: 0.05rem 0.6rem;
-    border-radius: 4px;
-    font-size: 0.75rem;
+    border-radius: var(--radius-book);
+    font-size: 0.8125rem;
     font-weight: bold;
-    color: white;
+    color: var(--color-status-ink);
   }
   .status-read {
-    background: var(--status-read);
+    background: var(--color-status-read);
   }
   .status-reading {
-    background: var(--status-reading);
+    background: var(--color-status-reading);
   }
   .status-unread {
-    background: var(--status-unread);
+    background: var(--color-status-unread);
   }
   .categories {
     display: flex;
@@ -319,30 +322,35 @@ const id = `book-${book.id}`;
   }
   .categories li {
     padding: 0.1rem 0.7rem;
-    border-radius: 999px;
-    background: #f1e4d3;
-    color: #6b4226;
-    font-size: 0.75rem;
+    border-radius: var(--radius-chip);
+    background: var(--color-paper-4);
+    color: var(--color-ink);
+    font-size: 0.8125rem;
   }
+  /* このモーダルでただ1つの、塗りつぶしたボタン */
   .buy {
-    display: inline-block;
-    padding: 0.5rem 1.25rem;
-    border-radius: 6px;
-    background: #8a5a35;
-    color: white;
-    font-size: 0.85rem;
+    display: inline-flex;
+    align-items: center;
+    min-block-size: 2.75rem;
+    padding-inline: 1.25rem;
+    border-radius: var(--radius-panel);
+    background: var(--color-accent);
+    color: var(--color-accent-ink);
+    font-size: 0.875rem;
+    font-weight: bold;
     text-decoration: none;
+    transition: background-color var(--dur-micro) var(--ease-out);
   }
   .buy:hover {
-    background: #6b4226;
-    color: white;
+    background: var(--color-focus);
+    color: var(--color-accent-ink);
   }
 
   .review {
     margin-top: 1.5rem;
     padding-top: 1.5rem;
-    border-top: 1px solid rgb(var(--gray-light));
-    font-size: 0.95rem;
+    border-top: 1px solid var(--color-rule);
+    font-size: 1rem;
   }
   .review :global(p:last-child) {
     margin-bottom: 0;

@@ -5,8 +5,9 @@ const today = new Date();
 <footer>
   &copy; {today.getFullYear()} Atsushi Fujisawa. All rights reserved.
   <div class="social-links">
-    <a href="https://twitter.com/astrodotbuild" target="_blank">
-      <span class="sr-only">Follow Astro on X</span>
+    <!-- rel="me" で、このサイトとアカウントが同じ人のものだと伝える -->
+    <a href="https://x.com/f_a24_" target="_blank" rel="me noopener">
+      <span class="sr-only">X（@f_a24_）</span>
       <svg
         viewBox="0 0 16 16"
         aria-hidden="true"
@@ -20,8 +21,8 @@ const today = new Date();
         ></path>
       </svg>
     </a>
-    <a href="https://github.com/withastro/astro" target="_blank">
-      <span class="sr-only">Go to Astro's GitHub repo</span>
+    <a href="https://github.com/f-a24" target="_blank" rel="me noopener">
+      <span class="sr-only">GitHub（f-a24）</span>
       <svg
         viewBox="0 0 16 16"
         aria-hidden="true"
@@ -40,7 +41,8 @@ const today = new Date();
 <style>
   footer {
     padding: 2em 1em 6em 1em;
-    color: var(--room-muted);
+    color: var(--color-muted);
+    font-size: 0.875rem;
     text-align: center;
   }
   .social-links {
@@ -51,9 +53,10 @@ const today = new Date();
   }
   .social-links a {
     text-decoration: none;
-    color: var(--room-muted);
+    color: var(--color-muted);
+    transition: color var(--dur-micro) var(--ease-out);
   }
   .social-links a:hover {
-    color: var(--brass);
+    color: var(--color-ink);
   }
 </style>

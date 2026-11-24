@@ -126,20 +126,11 @@ const categories = countByCategory(books);
     display: grid;
     gap: 0.75rem;
     margin-block-end: 1.5rem;
-    /* 背景の書架の上でも読めるよう、暗いパネルに載せる */
+    /* 背景の書架の上でも読めるよう、一段明るい面に載せる（枠線も透かしもなし） */
     --pad: 1.25rem; /* 横の余白（カテゴリの横スクロール欄の広げ方にも使う） */
     padding: 1rem var(--pad);
-    border: 1px solid rgb(201 164 92 / 25%);
-    border-radius: 10px;
-    background: var(--room-panel);
-    box-shadow: 0 10px 30px rgb(0 0 0 / 35%);
-  }
-  /* 背景をぼかせるブラウザでは、パネルを少し透かす */
-  @supports (backdrop-filter: blur(1px)) {
-    .book-filter {
-      background: rgb(24 14 8 / 55%);
-      backdrop-filter: blur(6px);
-    }
+    border-radius: var(--radius-panel);
+    background: var(--color-paper-2);
   }
 
   fieldset {
@@ -155,9 +146,8 @@ const categories = countByCategory(books);
     /* legend は grid に参加しないので、float で1列目に置く */
     float: inline-start;
     padding-block-start: 0.3rem;
-    font-size: 0.85rem;
-    font-weight: bold;
-    color: var(--room-muted);
+    font-size: 0.875rem;
+    color: var(--color-muted);
   }
   .options {
     grid-column: 2;
@@ -174,34 +164,34 @@ const categories = countByCategory(books);
     gap: 0.4em;
     min-block-size: 2rem;
     padding-inline: 0.8rem;
-    border: 1px solid rgb(201 164 92 / 30%);
-    border-radius: 999px;
-    background: rgb(255 255 255 / 5%);
-    color: var(--room-text);
-    font-size: 0.8rem;
+    border: 1px solid var(--color-rule);
+    border-radius: var(--radius-chip);
+    color: var(--color-muted);
+    font-size: 0.875rem;
     line-height: 1;
     cursor: pointer;
-    transition:
-      background-color 0.2s ease,
-      border-color 0.2s ease;
+    transition-property: background-color, border-color, color;
+    transition-duration: var(--dur-micro);
+    transition-timing-function: var(--ease-out);
 
+    /* ホバーは、枠と文字のコントラストを上げるだけ */
     &:hover {
-      border-color: var(--brass);
+      border-color: var(--color-muted);
+      color: var(--color-ink);
     }
     /* 選択中（真鍮の色） */
     &:has(:checked) {
-      border-color: var(--brass);
-      background: var(--brass);
-      color: #24150a;
+      border-color: var(--color-accent);
+      background: var(--color-accent);
+      color: var(--color-accent-ink);
 
       & .count {
         color: inherit;
-        opacity: 0.8;
       }
     }
     /* キーボードで選んでいるときは、チップ全体にフォーカス枠を出す */
     &:has(:focus-visible) {
-      outline: 3px solid var(--focus, #f2c96d);
+      outline: 3px solid var(--color-focus);
       outline-offset: 2px;
     }
   }
@@ -216,7 +206,7 @@ const categories = countByCategory(books);
   .count {
     font-size: 0.85em;
     font-variant-numeric: tabular-nums;
-    color: var(--room-muted);
+    color: var(--color-muted);
   }
 
   /* 画面が狭いときは、見出しをチップの上に置く */

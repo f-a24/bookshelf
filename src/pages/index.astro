@@ -4,10 +4,13 @@ import BookFilter from '../components/BookFilter.astro';
 import Bookshelf from '../components/Bookshelf.astro';
 import Footer from '../components/Footer.astro';
 import { SITE_DESCRIPTION, SITE_TITLE } from '../consts';
-import { getSortedBooks } from '../lib/books';
+import { countByStatus, getSortedBooks } from '../lib/books';
 
 // 全冊を新しい順に1ページに並べ、表示する本は BookFilter で絞り込む
 const books = await getSortedBooks();
+// 冒頭の一文は、本のデータから数えた冊数だけで書く
+const counts = countByStatus(books);
+const summary = `読み終えた本が${counts.read}冊、読んでいる本が${counts.reading}冊、積んでいる本が${counts.unread}冊。`;
 ---
 
 <!doctype html>
@@ -18,10 +21,43 @@ const books = await getSortedBooks();
       main {
         width: 960px;
       }
+
+      /* ページの冒頭：書名のように、明朝体のタイトルと冊数の一文だけを置く */
+      .intro {
+        margin-block-end: 2rem;
+
+        & h1 {
+          margin: 0;
+          font-family: var(--font-display);
+          font-size: clamp(2rem, 5vw, 3rem);
+          font-weight: 700;
+          line-height: 1.15;
+          letter-spacing: -0.01em;
+          overflow-wrap: break-word;
+          min-width: 0;
+        }
+        & .name {
+          white-space: nowrap;
+        }
+        & p {
+          margin: 0.75rem 0 0;
+          font-size: 1rem;
+          color: var(--color-muted);
+          font-variant-numeric: tabular-nums;
+        }
+      }
     </style>
   </head>
   <body>
     <main id="main">
+      <header class="intro">
+        <!-- 名前の途中では改行しない -->
+        <h1>
+          <span class="name">Atsushi Fujisawa</span> の本棚
+        </h1>
+        <!-- 整形で途中に改行が入ると「6 冊」のように空白ができるので、1つの文字列にする -->
+        <p>{summary}</p>
+      </header>
       <BookFilter books={books} />
       <Bookshelf books={books} heading="本棚" />
     </main>

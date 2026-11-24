@@ -1,44 +1,80 @@
 /*
-  The CSS in this style tag is based off of Bear Blog's default CSS.
-  https://github.com/HermanMartinus/bearblog/blob/297026a877bc2ab2b3bdfbd6b9f7961c350917dd/templates/styles/blog/default.css
-  License MIT: https://github.com/HermanMartinus/bearblog/blob/master/LICENSE.md
- */
+  デザインの方針（Hallmark の考え方を参考にしている）
+  - 色・書体・動きは、すべてこの :root のトークンを通して使う（部品の中に色を直接書かない）
+  - 色は OKLCH。暗い部屋の「紙」を土台に、明るさを1段ずつ上げた面を重ねる
+  - 差し色は真鍮の1色だけ。選択中のチップ・フォーカスなど、合図にだけ使う
+  例外: 背景の図書館の絵（html と body::before / ::after）は、絵そのものの色として直接書く
+*/
 
 :root {
-  --accent: #2337ff;
-  --accent-dark: #000d8a;
-  --black: 15, 18, 25;
-  --gray: 96, 115, 159;
-  --gray-light: 229, 233, 240;
-  --gray-dark: 34, 41, 57;
-  --gray-gradient: rgba(var(--gray-light), 50%), #fff;
-  --box-shadow:
-    0 2px 6px rgba(var(--gray), 25%), 0 8px 24px rgba(var(--gray), 33%),
-    0 16px 32px rgba(var(--gray), 33%);
+  /* ---- 面（暗い部屋の紙。数字が大きいほど手前で、少し明るい） ---- */
+  --color-paper: oklch(16% 0.012 55);
+  --color-paper-2: oklch(21% 0.016 55); /* 絞り込みのパネル */
+  --color-paper-3: oklch(25% 0.018 55); /* モーダル */
+  --color-paper-4: oklch(31% 0.02 55); /* モーダルの中のタグ・ホバー */
+  --color-rule: oklch(34% 0.02 60); /* 細い区切り線 */
 
-  /* 本の状態の色（本棚のしおりとモーダルで共通） */
-  --status-read: #5b7f5b;
-  --status-reading: #c27b2c;
-  --status-unread: #7a7f8c;
+  /* ---- 文字（灯りに照らされた紙の色） ---- */
+  --color-ink: oklch(92% 0.025 80);
+  --color-muted: oklch(76% 0.035 75);
 
-  /* 表紙がない本の布張りの見た目（本棚とモーダルで共通） */
-  --cloth-text: #f1e6cf;
+  /* ---- 差し色（真鍮）とフォーカス ---- */
+  --color-accent: oklch(74% 0.1 82);
+  --color-accent-ink: oklch(20% 0.03 60); /* 真鍮の上に載せる文字 */
+  --color-focus: oklch(80% 0.13 82);
+
+  /* ---- 本棚の木 ---- */
+  --color-wood-back: oklch(23% 0.03 52);
+  --color-wood-plank: oklch(45% 0.07 55);
+  --color-wood-plank-edge: oklch(40% 0.065 55);
+  --color-plank-shadow: oklch(5% 0.01 50 / 0.3); /* 棚板の下に落ちる影 */
+
+  /* ---- 本の状態（本棚のしおりとモーダルで共通） ---- */
+  --color-status-read: oklch(55% 0.07 145);
+  --color-status-reading: oklch(62% 0.12 65);
+  --color-status-unread: oklch(56% 0.015 260);
+  --color-status-ink: oklch(98% 0.005 80);
+
+  /* ---- 表紙がない本の布張り（本棚とモーダルで共通） ---- */
+  --color-cloth: oklch(33% 0.04 230);
+  --color-cloth-edge: oklch(27% 0.035 230);
+  --color-cloth-ink: oklch(92% 0.03 85);
   --cloth-cover:
     linear-gradient(
       180deg,
       transparent 12%,
-      #c9a45c 12% 13.5%,
+      var(--color-accent) 12% 13.5%,
       transparent 13.5%
     ),
-    linear-gradient(135deg, #2f4a5c, #1f3442);
+    linear-gradient(135deg, var(--color-cloth), var(--color-cloth-edge));
 
-  /* 図書館の部屋の色（ページの背景の上に置く文字や部品で使う） */
-  --room-text: #ecdfc8; /* 灯りに照らされた紙の色 */
-  --room-muted: #bba585;
-  --brass: #c9a45c; /* 真鍮の金具の色 */
-  --room-panel: rgb(24 14 8 / 72%); /* 背景の上に置くパネル */
+  /* ---- 影と幕（影と重ねる幕だけは透明度を使う） ---- */
+  --shadow-book: 0 4px 10px oklch(8% 0.02 50 / 0.5);
+  --shadow-modal: 0 24px 48px oklch(5% 0.01 50 / 0.55);
+  --color-scrim: oklch(8% 0.01 50 / 0.65);
 
-  /* 暗い部屋に合わせて、スクロールバーなども暗くする（モーダルの中は明るい紙の色） */
+  /* ---- 書体 ---- */
+  /* 本文：英数字は Atkinson、日本語は OS のゴシック体 */
+  --font-body:
+    var(--font-atkinson), 'Hiragino Sans', 'Yu Gothic UI', 'Meiryo', system-ui,
+    sans-serif;
+  /* 見出し：図書館らしく、OS の明朝体（Web フォントは読み込まない） */
+  --font-display: 'Hiragino Mincho ProN', 'Yu Mincho', 'YuMincho', serif;
+
+  /* ---- 動き ---- */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in: cubic-bezier(0.55, 0, 1, 0.45);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-micro: 120ms;
+  --dur-short: 220ms;
+  --dur-long: 420ms;
+
+  /* ---- 角の丸み（入れ子の段ごとに1つ） ---- */
+  --radius-panel: 8px;
+  --radius-chip: 999px;
+  --radius-book: 2px;
+
+  /* 暗い部屋に合わせて、スクロールバーなども暗くする */
   color-scheme: dark;
 }
 
@@ -91,7 +127,7 @@ html {
         #1c1108 100%
       );
   background-attachment: fixed;
-  background-color: #1c1108;
+  background-color: var(--color-paper);
 }
 
 /* 左右の壁の書架 */
@@ -151,15 +187,22 @@ body::after {
   inset-inline-end: 0;
   transform-origin: right center;
 }
+
+/* 横にはみ出したものがあっても、ページ全体を横にスクロールさせない（hidden と違い sticky を壊さない） */
+html,
 body {
-  font-family: var(--font-atkinson);
+  overflow-x: clip;
+}
+body {
+  font-family: var(--font-body);
   margin: 0;
   padding: 0;
   text-align: left;
   overflow-wrap: break-word;
-  color: var(--room-text);
+  color: var(--color-ink);
   font-size: 20px;
   line-height: 1.7;
+  font-synthesis: none;
 }
 main {
   width: 720px;
@@ -174,78 +217,49 @@ h4,
 h5,
 h6 {
   margin: 0 0 0.5rem 0;
-  color: rgb(var(--black));
+  color: inherit;
   line-height: 1.2;
   /* 見出しの行の長さをそろえる（未対応ブラウザでは通常の折り返し） */
   text-wrap: balance;
 }
-h1 {
-  font-size: 3.052em;
-}
-h2 {
-  font-size: 2.441em;
-}
-h3 {
-  font-size: 1.953em;
-}
-h4 {
-  font-size: 1.563em;
-}
-h5 {
-  font-size: 1.25em;
+p {
+  margin-bottom: 1em;
+  /* 段落の最後の行が1語だけにならないようにする（未対応ブラウザでは通常の折り返し） */
+  text-wrap: pretty;
 }
 strong,
 b {
   font-weight: 700;
 }
 a {
-  color: var(--accent);
-}
-a:hover {
-  color: var(--accent);
-}
-p {
-  margin-bottom: 1em;
-}
-.prose p {
-  margin-bottom: 2em;
-}
-textarea {
-  width: 100%;
-  font-size: 16px;
-}
-input {
-  font-size: 16px;
-}
-table {
-  width: 100%;
+  color: var(--color-accent);
 }
 img {
   max-width: 100%;
   height: auto;
-  border-radius: 8px;
 }
 code {
   padding: 2px 5px;
-  background-color: rgb(var(--gray-light));
+  background-color: var(--color-paper-4);
   border-radius: 2px;
 }
 pre {
-  padding: 1.5em;
-  border-radius: 8px;
+  padding: 1em;
+  overflow-x: auto;
+  background-color: var(--color-paper-4);
+  border-radius: var(--radius-panel);
 }
 pre > code {
   all: unset;
 }
 blockquote {
-  border-left: 4px solid var(--accent);
+  border-left: 3px solid var(--color-accent);
   padding: 0 0 0 20px;
   margin: 0;
-  font-size: 1.333em;
 }
 hr {
   border: none;
-  border-top: 1px solid rgb(var(--gray-light));
+  border-top: 1px solid var(--color-rule);
 }
 @media (max-width: 720px) {
   body {
@@ -273,9 +287,14 @@ hr {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* キーボード操作のときのフォーカス表示（暗い部屋でも見える明るい金色） */
+/* キーボード操作のときのフォーカス表示（すぐに出し、アニメーションさせない） */
 :focus-visible {
-  /* モーダルの中（明るい紙）では --focus で青に切り替える */
-  outline: 3px solid var(--focus, #f2c96d);
+  outline: 3px solid var(--color-focus);
   outline-offset: 2px;
+}
+
+/* 選択した文字の色も部屋の色に合わせる */
+::selection {
+  background: var(--color-accent);
+  color: var(--color-accent-ink);
 }
