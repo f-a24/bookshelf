@@ -1,0 +1,373 @@
+---
+import { Image } from 'astro:assets';
+import type { CollectionEntry } from 'astro:content';
+import { STATUS_LABELS } from '../lib/books';
+import BookModal from './BookModal.astro';
+
+interface Props {
+  books: CollectionEntry<'books'>[];
+  /** 本棚の上部に表示する見出し */
+  heading: string;
+}
+
+const { books, heading } = Astro.props;
+
+/** 最初に画面に入る本の数（1段目。表紙は遅延読み込みしない） */
+const FIRST_ROW = 5;
+
+/**
+ * 表紙の画像の幅の候補と、表示される幅。
+ * 本の高さは 180px（本棚の幅が 640px 未満では 120px）で、表紙はおよそ 0.78:1 なので、
+ * 表示される幅はおよそ 141px / 94px。画面の解像度に合わせてブラウザが候補から選ぶ
+ */
+const COVER_WIDTHS = [100, 150, 200, 300];
+const COVER_SIZES = '(width < 690px) 94px, 141px';
+---
+
+<section class="bookcase" aria-labelledby="bookcase-heading">
+  <header class="bookcase-header">
+    <h1 id="bookcase-heading">{heading}</h1>
+    <!-- 絞り込むと冊数が変わるので、読み上げソフトにも知らせる -->
+    <p role="status">
+      <span data-book-count>{books.length}</span>冊
+    </p>
+  </header>
+
+  <!-- Safari は list-style: none のリストを一覧として読まないので role="list" を付ける -->
+  <ul class="shelves" role="list">
+    {books.map((book, index) => (
+      <li
+        data-status={book.data.status}
+        data-categories={JSON.stringify(book.data.categories)}
+      >
+        {/* commandfor / command で、JS なしにモーダルを開く */}
+        <button
+          type="button"
+          class="book"
+          commandfor={`book-${book.id}`}
+          command="show-modal"
+          aria-haspopup="dialog"
+        >
+          {book.data.cover ? (
+            <Image
+              src={book.data.cover}
+              alt={book.data.title}
+              widths={COVER_WIDTHS}
+              sizes={COVER_SIZES}
+              quality={60}
+              loading={index < FIRST_ROW ? 'eager' : 'lazy'}
+              fetchpriority={index === 0 ? 'high' : undefined}
+            />
+          ) : (
+            // 表紙がない本は、タイトルを書いた布張りの本として表示する
+            <span class="no-cover">{book.data.title}</span>
+          )}
+          {/* 読了以外の本には、しおり風のラベルで状態を出す */}
+          {book.data.status !== 'read' && (
+            <span class={`badge badge-${book.data.status}`}>
+              {STATUS_LABELS[book.data.status]}
+            </span>
+          )}
+        </button>
+      </li>
+    ))}
+  </ul>
+  <p class="empty" data-book-empty hidden>
+    条件に合う本はありません
+  </p>
+</section>
+
+{books.map(book => (
+  <BookModal book={book} />
+))}
+
+<script>
+  // closedby="any"（背景クリックで閉じる）に未対応のブラウザ用の代わりの処理
+  const supportsClosedBy = 'closedBy' in HTMLDialogElement.prototype;
+
+  /** クリック位置がダイアログの外側（背景）かどうか */
+  const isOutside = (dialog: HTMLDialogElement, event: MouseEvent) => {
+    const rect = dialog.getBoundingClientRect();
+    return (
+      event.clientX < rect.left ||
+      event.clientX > rect.right ||
+      event.clientY < rect.top ||
+      event.clientY > rect.bottom
+    );
+  };
+
+  /** URL のハッシュを #book-xxx にして、開いた本をそのまま共有できるようにする */
+  const setHash = (id: string) => history.replaceState(null, '', `#${id}`);
+  const clearHash = () =>
+    history.replaceState(null, '', location.pathname + location.search);
+
+  for (const dialog of document.querySelectorAll<HTMLDialogElement>(
+    'dialog.book-modal',
+  )) {
+    // command イベントは開く対象のダイアログ自身に届く（バブリングしない）
+    dialog.addEventListener('command', event => {
+      if ((event as Event & { command: string }).command === 'show-modal') {
+        setHash(dialog.id);
+      }
+    });
+    // Esc・閉じるボタン・背景クリックのどれで閉じても、ハッシュを消す
+    dialog.addEventListener('close', clearHash);
+
+    if (!supportsClosedBy) {
+      dialog.addEventListener('click', event => {
+        if (event.target === dialog && isOutside(dialog, event)) dialog.close();
+      });
+    }
+  }
+
+  // #book-xxx 付きの URL で来たときは、最初からモーダルを開く
+  if (location.hash.startsWith('#book-')) {
+    const dialog = document.getElementById(
+      decodeURIComponent(location.hash.slice(1)),
+    );
+    if (dialog instanceof HTMLDialogElement) dialog.showModal();
+  }
+</script>
+
+<style>
+  .bookcase {
+    --wood-frame: #6b4226;
+    --wood-frame-edge: #5e391f;
+    --wood-light: #c08a5b;
+    --wood-plank: #a66f43;
+    --wood-back: #5a3820;
+    --frame: 14px; /* 枠の太さ */
+
+    /* 棚の大きさは、本棚自体の幅に合わせて切り替える（コンテナクエリ） */
+    container-type: inline-size;
+    padding: 0 var(--frame) var(--frame);
+    background: linear-gradient(
+      90deg,
+      var(--wood-frame-edge),
+      var(--wood-frame) 3% 97%,
+      var(--wood-frame-edge)
+    );
+    border-radius: 10px;
+    box-shadow:
+      0 20px 40px rgba(var(--black), 35%),
+      inset 0 0 0 1px rgba(255, 255, 255, 8%);
+  }
+
+  /* 上部の看板 */
+  .bookcase-header {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: center;
+    gap: 0 1rem;
+    margin-inline: calc(var(--frame) * -1);
+    padding: 0.9rem 1.5rem;
+    background:
+      repeating-linear-gradient(
+        180deg,
+        rgba(255, 255, 255, 6%) 0 2px,
+        transparent 2px 7px
+      ),
+      linear-gradient(180deg, #d9a273, var(--wood-light) 60%, #a8744a);
+    border-radius: 10px 10px 0 0;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 35%);
+
+    & h1 {
+      margin: 0;
+      font-size: 1.4rem;
+      color: #3d2312;
+      text-shadow: 0 1px 0 rgba(255, 255, 255, 35%);
+    }
+    & p {
+      margin: 0;
+      font-size: 0.85rem;
+      color: #4f2f19;
+      /* 絞り込みで冊数が変わっても、文字幅が揺れないようにする */
+      font-variant-numeric: tabular-nums;
+    }
+  }
+
+  /* 棚：背板・棚板・棚板の影を1段分ずつ縦に繰り返す */
+  .shelves {
+    --row: 240px; /* 棚1段の高さ */
+    --plank: 18px; /* 棚板の厚み */
+    --book-h: 180px; /* 本の高さ */
+
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    grid-auto-rows: var(--row);
+    margin: 0;
+    padding: 0 1rem;
+    list-style: none;
+    background-color: var(--wood-back);
+    background-image:
+      /* 棚板（上端は明るく、下端は暗く） */
+      linear-gradient(
+        180deg,
+        transparent calc(var(--row) - var(--plank)),
+        #c48c5c calc(var(--row) - var(--plank)),
+        var(--wood-plank) calc(var(--row) - var(--plank) + 4px),
+        #7c4e2b var(--row)
+      ),
+      /* 棚板の下に落ちる影 */
+      linear-gradient(180deg, rgba(0, 0, 0, 45%), transparent 22px),
+      /* 背板の縦の板目 */
+      repeating-linear-gradient(
+          90deg,
+          rgba(0, 0, 0, 12%) 0 2px,
+          transparent 2px 160px
+        ),
+      repeating-linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 3%) 0 1px,
+        transparent 1px 9px
+      );
+    background-size:
+      100% var(--row),
+      100% var(--row),
+      auto,
+      auto;
+    box-shadow: inset 0 0 30px rgba(0, 0, 0, 50%);
+
+    & li:not([hidden]) {
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      min-width: 0;
+      padding-block-end: var(--plank);
+    }
+  }
+
+  /* 絞り込みで1冊も残らなかったとき */
+  .empty {
+    margin: 0;
+    padding: 3rem 1rem;
+    background: var(--wood-back);
+    box-shadow: inset 0 0 30px rgba(0, 0, 0, 50%);
+    color: var(--cloth-text);
+    text-align: center;
+  }
+
+  /* 本：右側に紙の断面、左側に背の陰影を付けて立体的に見せる */
+  .book {
+    position: relative;
+    display: block;
+    padding: 0;
+    border: 0;
+    background: none;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+    transform-origin: bottom center;
+
+    /* 背の陰影 */
+    &::after {
+      content: '';
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 12px;
+      border-radius: 2px 0 0 2px;
+      background: linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 30%),
+        rgba(0, 0, 0, 25%) 35%,
+        transparent
+      );
+      pointer-events: none;
+    }
+    /* ホバー・フォーカス中は表紙を少し明るくする（動きを減らす設定でも分かるように） */
+    &:is(:hover, :focus-visible) :is(img, .no-cover) {
+      filter: brightness(1.08);
+    }
+    &:focus-visible {
+      outline-color: #ffd27a;
+      outline-offset: 4px;
+      border-radius: 4px;
+    }
+  }
+
+  /* 動きを減らす設定のときは、本を持ち上げる動きを付けない */
+  @media (prefers-reduced-motion: no-preference) {
+    .book {
+      transition: transform 0.25s ease;
+
+      &:is(:hover, :focus-visible) {
+        transform: translateY(-8px) rotate(-1deg);
+      }
+    }
+  }
+
+  .book img,
+  .no-cover {
+    display: block;
+    /* 縦横比を本の形（A判・B判に近い 1:1.414）に固定する */
+    width: auto;
+    height: var(--book-h);
+    aspect-ratio: 1 / 1.414;
+    max-width: calc(100% - 16px);
+    object-fit: cover;
+    border-radius: 2px 4px 4px 2px;
+    box-shadow:
+      2px 0 0 #f4efe4,
+      3px 0 0 #d8d0c0,
+      5px 0 0 #f4efe4,
+      6px 0 0 #bfb5a3,
+      8px 6px 12px rgba(0, 0, 0, 55%);
+  }
+  .no-cover {
+    box-sizing: border-box;
+    padding: 18% 12% 0 16%;
+    overflow: clip;
+    background: var(--cloth-cover);
+    color: var(--cloth-text);
+    font-size: 0.7rem;
+    font-weight: bold;
+    line-height: 1.5;
+    text-align: start;
+    word-break: break-all;
+  }
+
+  /* 状態ラベル（本の上端から垂れるしおり） */
+  .badge {
+    position: absolute;
+    top: -6px;
+    right: 14px;
+    z-index: 1;
+    padding: 6px 3px 10px;
+    font-size: 0.55rem;
+    font-weight: bold;
+    line-height: 1.1;
+    color: white;
+    writing-mode: vertical-rl;
+    letter-spacing: 0.1em;
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 50% calc(100% - 6px), 0 100%);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 30%);
+  }
+  .badge-reading {
+    background: var(--status-reading);
+  }
+  .badge-unread {
+    background: var(--status-unread);
+  }
+
+  /* 本棚の幅が狭いとき（スマートフォンなど）は3列にする */
+  @container (width < 640px) {
+    .shelves {
+      --row: 170px;
+      --plank: 14px;
+      --book-h: 120px;
+
+      grid-template-columns: repeat(3, 1fr);
+      padding: 0 0.25rem;
+    }
+  }
+
+  /* 画面が狭いときは枠を細くする（枠は本棚自身なのでメディアクエリで切り替える） */
+  @media (width < 720px) {
+    .bookcase {
+      --frame: 8px;
+    }
+  }
+</style>

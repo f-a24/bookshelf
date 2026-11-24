@@ -1,5 +1,5 @@
 {
-  "name": "",
+  "name": "bookshelf",
   "type": "module",
   "version": "0.0.1",
   "engines": {
@@ -9,13 +9,17 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "book": "bun ./getBook.ts",
+    "fmt": "bun fmt"
   },
-  "dependencies": {
-    "@astrojs/mdx": "^6.0.3",
-    "@astrojs/rss": "^4.0.18",
-    "@astrojs/sitemap": "^3.7.3",
-    "astro": "^6.4.7",
-    "sharp": "^0.34.3"
+  "devDependencies": {
+    "@astrojs/rss": "^4.0.19",
+    "@astrojs/sitemap": "^3.7.6",
+    "astro": "^7.4.13",
+    "prettier": "3.10.1",
+    "prettier-plugin-astro": "1.1.2",
+    "sharp": "^0.35.5",
+    "wrangler": "^4.167.0"
   }
 }

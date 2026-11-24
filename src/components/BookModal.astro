@@ -1,0 +1,372 @@
+---
+import { Image } from 'astro:assets';
+import { type CollectionEntry, render } from 'astro:content';
+import { STATUS_LABELS } from '../lib/books';
+import FormattedDate from './FormattedDate.astro';
+
+interface Props {
+  book: CollectionEntry<'books'>;
+}
+
+const { book } = Astro.props;
+const {
+  title,
+  authors,
+  publisher,
+  publishedDate,
+  status,
+  readDate,
+  cover,
+  categories,
+  rating,
+  link,
+} = book.data;
+// 本文（感想）の Markdown をHTMLにする
+const { Content } = await render(book);
+// HTMLコメント（<!-- ここに感想を書く --> など）だけなら感想なしとみなす
+const hasReview =
+  (book.body ?? '').replace(/<!--[\s\S]*?-->/g, '').trim().length > 0;
+const id = `book-${book.id}`;
+---
+
+<!-- closedby="any" で、Esc と背景クリックのどちらでも閉じられる -->
+<dialog
+  class="book-modal"
+  id={id}
+  aria-labelledby={`${id}-title`}
+  closedby="any"
+>
+  <div class="inner">
+    <button
+      type="button"
+      class="close"
+      commandfor={id}
+      command="close"
+      aria-label="閉じる"
+    >
+      &times;
+    </button>
+
+    <div class="head">
+      {cover ? (
+        // 開くまで見えない画像なので、遅延読み込みにする（開いたときに読み込まれる）
+        <Image
+          src={cover}
+          alt=""
+          class="cover"
+          loading="lazy"
+          widths={[140, 180, 280, 360]}
+          sizes="(width < 592px) 140px, 180px"
+          quality={70}
+        />
+      ) : (
+        <div class="cover no-cover" aria-hidden="true">
+          {title}
+        </div>
+      )}
+      <div class="info">
+        <h2 id={`${id}-title`}>{title}</h2>
+        <p class="authors">{authors.join('、')}</p>
+        {rating && (
+          <p class="rating" aria-label={`評価 ${rating} / 5`}>
+            {'★'.repeat(rating)}
+            <span>{'★'.repeat(5 - rating)}</span>
+          </p>
+        )}
+        <dl>
+          <dt>状態</dt>
+          <dd>
+            <span class={`status status-${status}`}>
+              {STATUS_LABELS[status]}
+            </span>
+          </dd>
+          {publisher && (
+            <>
+              <dt>出版社</dt>
+              <dd>{publisher}</dd>
+            </>
+          )}
+          {publishedDate && (
+            <>
+              <dt>発売日</dt>
+              <dd>
+                {/* 年月日がそろっていれば読了日と同じ書き方に、年や年月だけならそのまま出す */}
+                {/^\d{4}-\d{2}-\d{2}$/.test(publishedDate) ? (
+                  <FormattedDate date={new Date(publishedDate)} />
+                ) : (
+                  publishedDate
+                )}
+              </dd>
+            </>
+          )}
+          {readDate && (
+            <>
+              <dt>読了日</dt>
+              <dd>
+                <FormattedDate date={readDate} />
+              </dd>
+            </>
+          )}
+        </dl>
+        {categories.length > 0 && (
+          <ul class="categories" role="list">
+            {categories.map(category => (
+              <li>{category}</li>
+            ))}
+          </ul>
+        )}
+        {link && (
+          <a class="buy" href={link} target="_blank" rel="noopener">
+            購入ページを見る
+          </a>
+        )}
+      </div>
+    </div>
+
+    {hasReview && (
+      <div class="review">
+        <Content />
+      </div>
+    )}
+  </div>
+</dialog>
+
+<style>
+  .book-modal {
+    width: min(760px, calc(100% - 2rem));
+    max-height: calc(100dvh - 2rem);
+    padding: 0;
+    border: none;
+    border-radius: 12px;
+    background: #fffdf8;
+    color: rgb(var(--gray-dark));
+    /* ページは暗い色だが、モーダルの中は明るい紙なのでスクロールバーなども明るくする */
+    color-scheme: light;
+    --focus: var(--accent);
+    box-shadow: 0 30px 60px rgba(0, 0, 0, 40%);
+
+    /*
+      開閉のアニメーション。display と overlay も切り替えの対象にして、
+      閉じるときもフェードアウトさせる（未対応ブラウザでは閉じるときだけ一瞬で消える）。
+      transition-behavior は、古いブラウザで transition ごと無視されないよう個別に書く
+    */
+    opacity: 0;
+    transition-property: opacity, display, overlay;
+    transition-duration: 0.25s;
+    transition-timing-function: ease;
+    transition-behavior: allow-discrete;
+
+    &[open] {
+      opacity: 1;
+
+      @starting-style {
+        opacity: 0;
+      }
+    }
+
+    /* 背景のページがスクロールしないようにする（body の overflow は変えない） */
+    &:modal {
+      overscroll-behavior: contain;
+    }
+
+    &::backdrop {
+      overflow: hidden;
+      overscroll-behavior: contain;
+      background: rgba(var(--black), 0%);
+      backdrop-filter: blur(0);
+      transition-property: background, backdrop-filter, display, overlay;
+      transition-duration: 0.25s;
+      transition-timing-function: ease;
+      transition-behavior: allow-discrete;
+    }
+    &[open]::backdrop {
+      background: rgba(var(--black), 60%);
+      backdrop-filter: blur(3px);
+    }
+  }
+  /* @starting-style の中では ::backdrop をネストできないので分けて書く */
+  @starting-style {
+    .book-modal[open]::backdrop {
+      background: rgba(var(--black), 0%);
+      backdrop-filter: blur(0);
+    }
+  }
+
+  /* 動きを減らす設定でなければ、少し下から浮かび上がるようにする */
+  @media (prefers-reduced-motion: no-preference) {
+    .book-modal {
+      translate: 0 16px;
+      scale: 0.98;
+      transition-property: opacity, translate, scale, display, overlay;
+
+      &[open] {
+        translate: 0;
+        scale: 1;
+
+        @starting-style {
+          translate: 0 16px;
+          scale: 0.98;
+        }
+      }
+    }
+  }
+
+  .inner {
+    /* 中身のレイアウトは、ダイアログの幅に合わせて切り替える（コンテナクエリ） */
+    container-type: inline-size;
+    position: relative;
+    /* 画面が狭いときは余白を少し詰める */
+    padding: clamp(1.5rem, 4vw, 2rem);
+  }
+  .close {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    width: 2.5rem;
+    height: 2.5rem;
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    font-size: 1.75rem;
+    line-height: 1;
+    color: rgb(var(--gray));
+    cursor: pointer;
+  }
+  .close:hover {
+    background: rgb(var(--gray-light));
+  }
+
+  .head {
+    display: grid;
+    grid-template-columns: 180px 1fr;
+    gap: 2rem;
+    align-items: start;
+  }
+  .cover {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1 / 1.414;
+    object-fit: cover;
+    border-radius: 2px 4px 4px 2px;
+    box-shadow:
+      3px 0 0 #eee6d6,
+      6px 6px 16px rgba(0, 0, 0, 30%);
+  }
+  /* 表紙がない本（本棚と同じ布張りの見た目） */
+  .no-cover {
+    box-sizing: border-box;
+    padding: 20% 12% 0 14%;
+    overflow: clip;
+    background: var(--cloth-cover);
+    color: var(--cloth-text);
+    font-weight: bold;
+    line-height: 1.5;
+    word-break: break-all;
+  }
+  .info h2 {
+    margin: 0 2rem 0.5rem 0;
+    font-size: 1.5rem;
+    line-height: 1.4;
+  }
+  .authors {
+    margin: 0 0 0.5rem;
+    color: rgb(var(--gray));
+  }
+  .rating {
+    margin: 0 0 0.75rem;
+    color: #e0a526;
+    letter-spacing: 0.1em;
+  }
+  .rating span {
+    color: rgb(var(--gray-light));
+  }
+  dl {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.25rem 1rem;
+    margin: 0 0 1rem;
+    font-size: 0.85rem;
+  }
+  dt {
+    color: rgb(var(--gray));
+  }
+  dd {
+    margin: 0;
+  }
+  .status {
+    padding: 0.05rem 0.6rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: bold;
+    color: white;
+  }
+  .status-read {
+    background: var(--status-read);
+  }
+  .status-reading {
+    background: var(--status-reading);
+  }
+  .status-unread {
+    background: var(--status-unread);
+  }
+  .categories {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin: 0 0 1rem;
+    padding: 0;
+    list-style: none;
+  }
+  .categories li {
+    padding: 0.1rem 0.7rem;
+    border-radius: 999px;
+    background: #f1e4d3;
+    color: #6b4226;
+    font-size: 0.75rem;
+  }
+  .buy {
+    display: inline-block;
+    padding: 0.5rem 1.25rem;
+    border-radius: 6px;
+    background: #8a5a35;
+    color: white;
+    font-size: 0.85rem;
+    text-decoration: none;
+  }
+  .buy:hover {
+    background: #6b4226;
+    color: white;
+  }
+
+  .review {
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid rgb(var(--gray-light));
+    font-size: 0.95rem;
+  }
+  .review :global(p:last-child) {
+    margin-bottom: 0;
+  }
+
+  /* ダイアログが狭いときは、表紙を上・情報を下に並べる */
+  @container (width < 560px) {
+    .head {
+      grid-template-columns: 1fr;
+      gap: 1rem;
+      justify-items: center;
+      text-align: center;
+    }
+    .cover {
+      width: 140px;
+    }
+    .info h2 {
+      margin-right: 0;
+    }
+    dl {
+      justify-content: center;
+    }
+    .categories {
+      justify-content: center;
+    }
+  }
+</style>

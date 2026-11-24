@@ -5,35 +5,167 @@
  */
 
 :root {
-	--accent: #2337ff;
-	--accent-dark: #000d8a;
-	--black: 15, 18, 25;
-	--gray: 96, 115, 159;
-	--gray-light: 229, 233, 240;
-	--gray-dark: 34, 41, 57;
-	--gray-gradient: rgba(var(--gray-light), 50%), #fff;
-	--box-shadow:
-		0 2px 6px rgba(var(--gray), 25%), 0 8px 24px rgba(var(--gray), 33%),
-		0 16px 32px rgba(var(--gray), 33%);
+  --accent: #2337ff;
+  --accent-dark: #000d8a;
+  --black: 15, 18, 25;
+  --gray: 96, 115, 159;
+  --gray-light: 229, 233, 240;
+  --gray-dark: 34, 41, 57;
+  --gray-gradient: rgba(var(--gray-light), 50%), #fff;
+  --box-shadow:
+    0 2px 6px rgba(var(--gray), 25%), 0 8px 24px rgba(var(--gray), 33%),
+    0 16px 32px rgba(var(--gray), 33%);
+
+  /* 本の状態の色（本棚のしおりとモーダルで共通） */
+  --status-read: #5b7f5b;
+  --status-reading: #c27b2c;
+  --status-unread: #7a7f8c;
+
+  /* 表紙がない本の布張りの見た目（本棚とモーダルで共通） */
+  --cloth-text: #f1e6cf;
+  --cloth-cover:
+    linear-gradient(
+      180deg,
+      transparent 12%,
+      #c9a45c 12% 13.5%,
+      transparent 13.5%
+    ),
+    linear-gradient(135deg, #2f4a5c, #1f3442);
+
+  /* 図書館の部屋の色（ページの背景の上に置く文字や部品で使う） */
+  --room-text: #ecdfc8; /* 灯りに照らされた紙の色 */
+  --room-muted: #bba585;
+  --brass: #c9a45c; /* 真鍮の金具の色 */
+  --room-panel: rgb(24 14 8 / 72%); /* 背景の上に置くパネル */
+
+  /* 暗い部屋に合わせて、スクロールバーなども暗くする（モーダルの中は明るい紙の色） */
+  color-scheme: dark;
+}
+
+/*
+  背景は、古い図書館の通路を CSS だけで描く。
+  html に天井・奥の窓の光・床の灯りを描き、body の ::before / ::after で
+  左右の壁の書架を奥へ遠ざかるように傾けて置く（どちらも画面に固定する）
+*/
+html {
+  background:
+    /* 奥の窓から差し込む光 */
+    radial-gradient(
+      ellipse 16% 24% at 50% 30%,
+      rgb(255 238 205 / 70%),
+      rgb(255 205 140 / 22%) 45%,
+      transparent 75%
+    ),
+    /* 床に落ちる灯り（左右の手前と、通路の奥） */
+    radial-gradient(
+        ellipse 22% 9% at 24% 92%,
+        rgb(255 168 78 / 38%),
+        transparent 70%
+      ),
+    radial-gradient(
+      ellipse 22% 9% at 76% 92%,
+      rgb(255 168 78 / 38%),
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 12% 22% at 50% 70%,
+      rgb(255 214 150 / 22%),
+      transparent 70%
+    ),
+    /* 天井の梁 */
+    repeating-linear-gradient(
+        180deg,
+        rgb(0 0 0 / 40%) 0 4px,
+        transparent 4px 34px
+      )
+      top / 100% 26% no-repeat,
+    /* 天井（暗い）→ 奥の壁 → 磨かれた床（灯りを映す） */
+    linear-gradient(
+        180deg,
+        #120a05 0%,
+        #2a1a0e 26%,
+        #3a2616 44%,
+        #2b1a0e 62%,
+        #4a301b 63%,
+        #2c1c10 85%,
+        #1c1108 100%
+      );
+  background-attachment: fixed;
+  background-color: #1c1108;
+}
+
+/* 左右の壁の書架 */
+body::before,
+body::after {
+  content: '';
+  position: fixed;
+  inset-block: 0;
+  z-index: -1;
+  width: 50vw;
+  pointer-events: none;
+  background:
+    /* 奥ほど暗くする */
+    linear-gradient(var(--fade-to), transparent 10%, rgb(10 5 2 / 85%) 100%),
+    /* 棚板（暗い隙間・本・棚板の順に繰り返す） */
+    repeating-linear-gradient(
+        180deg,
+        rgb(14 8 4 / 92%) 0 14px,
+        transparent 14px 80px,
+        #4a2c16 80px 84px,
+        #26150a 84px 96px
+      ),
+    /* 背表紙の金の帯 */
+    repeating-linear-gradient(
+        180deg,
+        transparent 0 28px,
+        rgb(214 172 92 / 30%) 28px 30px,
+        transparent 30px 64px,
+        rgb(214 172 92 / 22%) 64px 66px,
+        transparent 66px 96px
+      ),
+    /* 背表紙（革の色を、太さを変えて並べる） */
+    repeating-linear-gradient(
+        90deg,
+        #6e3b1f 0 7px,
+        #9c6b38 7px 12px,
+        #4a2a16 12px 14px,
+        #b8864c 14px 21px,
+        #7d2e1f 21px 26px,
+        #8b5a2b 26px 34px,
+        #3a2010 34px 36px,
+        #a7773f 36px 42px,
+        #5c3018 42px 48px
+      );
+  /* 手前（画面の端）を軸にして、奥へ倒す */
+  transform: perspective(900px) rotateY(var(--wall-angle));
+}
+body::before {
+  --wall-angle: 58deg;
+  --fade-to: to right;
+  inset-inline-start: 0;
+  transform-origin: left center;
+}
+body::after {
+  --wall-angle: -58deg;
+  --fade-to: to left;
+  inset-inline-end: 0;
+  transform-origin: right center;
 }
 body {
-	font-family: var(--font-atkinson);
-	margin: 0;
-	padding: 0;
-	text-align: left;
-	background: linear-gradient(var(--gray-gradient)) no-repeat;
-	background-size: 100% 600px;
-	word-wrap: break-word;
-	overflow-wrap: break-word;
-	color: rgb(var(--gray-dark));
-	font-size: 20px;
-	line-height: 1.7;
+  font-family: var(--font-atkinson);
+  margin: 0;
+  padding: 0;
+  text-align: left;
+  overflow-wrap: break-word;
+  color: var(--room-text);
+  font-size: 20px;
+  line-height: 1.7;
 }
 main {
-	width: 720px;
-	max-width: calc(100% - 2em);
-	margin: auto;
-	padding: 3em 1em;
+  width: 720px;
+  max-width: calc(100% - 2em);
+  margin: auto;
+  padding: 3em 1em;
 }
 h1,
 h2,
@@ -41,101 +173,109 @@ h3,
 h4,
 h5,
 h6 {
-	margin: 0 0 0.5rem 0;
-	color: rgb(var(--black));
-	line-height: 1.2;
+  margin: 0 0 0.5rem 0;
+  color: rgb(var(--black));
+  line-height: 1.2;
+  /* 見出しの行の長さをそろえる（未対応ブラウザでは通常の折り返し） */
+  text-wrap: balance;
 }
 h1 {
-	font-size: 3.052em;
+  font-size: 3.052em;
 }
 h2 {
-	font-size: 2.441em;
+  font-size: 2.441em;
 }
 h3 {
-	font-size: 1.953em;
+  font-size: 1.953em;
 }
 h4 {
-	font-size: 1.563em;
+  font-size: 1.563em;
 }
 h5 {
-	font-size: 1.25em;
+  font-size: 1.25em;
 }
 strong,
 b {
-	font-weight: 700;
+  font-weight: 700;
 }
 a {
-	color: var(--accent);
+  color: var(--accent);
 }
 a:hover {
-	color: var(--accent);
+  color: var(--accent);
 }
 p {
-	margin-bottom: 1em;
+  margin-bottom: 1em;
 }
 .prose p {
-	margin-bottom: 2em;
+  margin-bottom: 2em;
 }
 textarea {
-	width: 100%;
-	font-size: 16px;
+  width: 100%;
+  font-size: 16px;
 }
 input {
-	font-size: 16px;
+  font-size: 16px;
 }
 table {
-	width: 100%;
+  width: 100%;
 }
 img {
-	max-width: 100%;
-	height: auto;
-	border-radius: 8px;
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
 }
 code {
-	padding: 2px 5px;
-	background-color: rgb(var(--gray-light));
-	border-radius: 2px;
+  padding: 2px 5px;
+  background-color: rgb(var(--gray-light));
+  border-radius: 2px;
 }
 pre {
-	padding: 1.5em;
-	border-radius: 8px;
+  padding: 1.5em;
+  border-radius: 8px;
 }
 pre > code {
-	all: unset;
+  all: unset;
 }
 blockquote {
-	border-left: 4px solid var(--accent);
-	padding: 0 0 0 20px;
-	margin: 0;
-	font-size: 1.333em;
+  border-left: 4px solid var(--accent);
+  padding: 0 0 0 20px;
+  margin: 0;
+  font-size: 1.333em;
 }
 hr {
-	border: none;
-	border-top: 1px solid rgb(var(--gray-light));
+  border: none;
+  border-top: 1px solid rgb(var(--gray-light));
 }
 @media (max-width: 720px) {
-	body {
-		font-size: 18px;
-	}
-	main {
-		padding: 1em;
-	}
+  body {
+    font-size: 18px;
+  }
+  main {
+    padding: 1em;
+  }
 }
 
-.sr-only {
-	border: 0;
-	padding: 0;
-	margin: 0;
-	position: absolute !important;
-	height: 1px;
-	width: 1px;
-	overflow: hidden;
-	/* IE6, IE7 - a 0 height clip, off to the bottom right of the visible 1px box */
-	clip: rect(1px 1px 1px 1px);
-	/* maybe deprecated but we need to support legacy browsers */
-	clip: rect(1px, 1px, 1px, 1px);
-	/* modern browsers, clip-path works inwards from each corner */
-	clip-path: inset(50%);
-	/* added line to stop words getting smushed together (as they go onto separate lines and some screen readers do not understand line feeds as a space */
-	white-space: nowrap;
+/* 見た目には隠し、スクリーンリーダーには読ませる（フォーカス中は表示する） */
+.sr-only:where(:not(:focus-within, :active)) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* タップで操作する部品は、ダブルタップでの拡大を待たずにすぐ反応させ、タップ時の灰色の四角も消す
+   （押したときの見た目は、それぞれのホバー・選択中の表示で分かる） */
+:where(a, button, label) {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* キーボード操作のときのフォーカス表示（暗い部屋でも見える明るい金色） */
+:focus-visible {
+  /* モーダルの中（明るい紙）では --focus で青に切り替える */
+  outline: 3px solid var(--focus, #f2c96d);
+  outline-offset: 2px;
 }

@@ -1,0 +1,309 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import { countByCategory, countByStatus, STATUS_LABELS } from '../lib/books';
+
+interface Props {
+  books: CollectionEntry<'books'>[];
+}
+
+const { books } = Astro.props;
+const statusCounts = countByStatus(books);
+const statuses = (
+  Object.keys(STATUS_LABELS) as (keyof typeof STATUS_LABELS)[]
+).filter(status => statusCounts[status] > 0);
+const categories = countByCategory(books);
+---
+
+<!--
+  状態とカテゴリで本棚を絞り込む。
+  選んだ条件は ?status=reading&category=デザイン のように URL に残し、そのまま共有できる
+-->
+<form class="book-filter" aria-label="本の絞り込み" data-book-filter>
+  <fieldset>
+    <legend>状態</legend>
+    <div class="options">
+      <label>
+        <input type="radio" name="status" value="" checked />
+        すべて<span class="count">{books.length}</span>
+      </label>
+      {statuses.map(status => (
+        <label>
+          <input type="radio" name="status" value={status} />
+          {STATUS_LABELS[status]}
+          <span class="count">{statusCounts[status]}</span>
+        </label>
+      ))}
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>カテゴリ</legend>
+    <div class="options scroll-on-narrow">
+      <label>
+        <input type="radio" name="category" value="" checked />
+        すべて<span class="count">{books.length}</span>
+      </label>
+      {categories.map(([category, count]) => (
+        <label>
+          <input type="radio" name="category" value={category} />
+          {category}
+          <span class="count">{count}</span>
+        </label>
+      ))}
+    </div>
+  </fieldset>
+</form>
+
+<script>
+  const form = document.querySelector<HTMLFormElement>('[data-book-filter]')!;
+  const items = document.querySelectorAll<HTMLLIElement>('.shelves > li');
+  const shelves = document.querySelector<HTMLElement>('.shelves')!;
+  const countOutput = document.querySelector('[data-book-count]')!;
+  const emptyMessage =
+    document.querySelector<HTMLElement>('[data-book-empty]')!;
+
+  /** 選択中の条件で本を絞り込み、冊数を更新する */
+  const applyFilter = () => {
+    const data = new FormData(form);
+    const status = String(data.get('status') ?? '');
+    const category = String(data.get('category') ?? '');
+
+    let visible = 0;
+    for (const item of items) {
+      const categories: string[] = JSON.parse(item.dataset.categories ?? '[]');
+      const matches =
+        (!status || item.dataset.status === status) &&
+        (!category || categories.includes(category));
+      item.hidden = !matches;
+      if (matches) visible++;
+    }
+
+    countOutput.textContent = String(visible);
+    shelves.hidden = visible === 0;
+    emptyMessage.hidden = visible > 0;
+  };
+
+  /** 選択中の条件を URL のクエリに反映する（#book-xxx は残す） */
+  const updateUrl = () => {
+    const params = new URLSearchParams();
+    for (const [name, value] of new FormData(form)) {
+      if (value) params.set(name, String(value));
+    }
+    const query = params.size > 0 ? `?${params}` : '';
+    history.replaceState(
+      null,
+      '',
+      `${location.pathname}${query}${location.hash}`,
+    );
+  };
+
+  /** URL のクエリから条件を復元する（存在しない値は「すべて」のまま） */
+  const restoreFromUrl = () => {
+    const params = new URLSearchParams(location.search);
+    for (const name of ['status', 'category']) {
+      const value = params.get(name);
+      if (!value) continue;
+      const input = [
+        ...form.querySelectorAll<HTMLInputElement>(`input[name="${name}"]`),
+      ].find(radio => radio.value === value);
+      if (input) input.checked = true;
+    }
+  };
+
+  form.addEventListener('change', () => {
+    applyFilter();
+    updateUrl();
+  });
+  // Enter キーなどでフォームが送信されてページが再読み込みされるのを防ぐ
+  form.addEventListener('submit', event => event.preventDefault());
+
+  restoreFromUrl();
+  applyFilter();
+</script>
+
+<style>
+  .book-filter {
+    display: grid;
+    gap: 0.75rem;
+    margin-block-end: 1.5rem;
+    /* 背景の書架の上でも読めるよう、暗いパネルに載せる */
+    --pad: 1.25rem; /* 横の余白（カテゴリの横スクロール欄の広げ方にも使う） */
+    padding: 1rem var(--pad);
+    border: 1px solid rgb(201 164 92 / 25%);
+    border-radius: 10px;
+    background: var(--room-panel);
+    box-shadow: 0 10px 30px rgb(0 0 0 / 35%);
+  }
+  /* 背景をぼかせるブラウザでは、パネルを少し透かす */
+  @supports (backdrop-filter: blur(1px)) {
+    .book-filter {
+      background: rgb(24 14 8 / 55%);
+      backdrop-filter: blur(6px);
+    }
+  }
+
+  fieldset {
+    display: grid;
+    grid-template-columns: 5.5em 1fr;
+    align-items: start;
+    gap: 0.5rem;
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+  legend {
+    /* legend は grid に参加しないので、float で1列目に置く */
+    float: inline-start;
+    padding-block-start: 0.3rem;
+    font-size: 0.85rem;
+    font-weight: bold;
+    color: var(--room-muted);
+  }
+  .options {
+    grid-column: 2;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  /* ラジオボタンを、チップ型のボタンとして見せる */
+  label {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4em;
+    min-block-size: 2rem;
+    padding-inline: 0.8rem;
+    border: 1px solid rgb(201 164 92 / 30%);
+    border-radius: 999px;
+    background: rgb(255 255 255 / 5%);
+    color: var(--room-text);
+    font-size: 0.8rem;
+    line-height: 1;
+    cursor: pointer;
+    transition:
+      background-color 0.2s ease,
+      border-color 0.2s ease;
+
+    &:hover {
+      border-color: var(--brass);
+    }
+    /* 選択中（真鍮の色） */
+    &:has(:checked) {
+      border-color: var(--brass);
+      background: var(--brass);
+      color: #24150a;
+
+      & .count {
+        color: inherit;
+        opacity: 0.8;
+      }
+    }
+    /* キーボードで選んでいるときは、チップ全体にフォーカス枠を出す */
+    &:has(:focus-visible) {
+      outline: 3px solid var(--focus, #f2c96d);
+      outline-offset: 2px;
+    }
+  }
+
+  /* ラジオボタン本体は見た目だけ隠す（キーボード操作と読み上げはそのまま使える） */
+  input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .count {
+    font-size: 0.85em;
+    font-variant-numeric: tabular-nums;
+    color: var(--room-muted);
+  }
+
+  /* 画面が狭いときは、見出しをチップの上に置く */
+  @media (width < 720px) {
+    fieldset {
+      grid-template-columns: 1fr;
+    }
+    legend {
+      float: none;
+      padding-block-start: 0;
+    }
+    .options {
+      grid-column: 1;
+    }
+
+    /* カテゴリは折り返さず、横にスクロールさせる */
+    .scroll-on-narrow {
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      /* 端までスクロールしても、ページ全体が横に動かないようにする */
+      overscroll-behavior-inline: contain;
+      /* パネルの余白の分だけ端まで広げ、続きがあることを分かりやすくする */
+      margin-inline: calc(var(--pad) * -1);
+      /* 上下の余白は、フォーカス枠が切れないようにするため */
+      padding: 5px var(--pad);
+      scroll-padding-inline: var(--pad);
+      /* 端をぼかして、続きがあることを示す（未対応ブラウザでは右端だけ） */
+      --fade: 2rem;
+      mask-image: linear-gradient(
+        to right,
+        black calc(100% - var(--fade)),
+        transparent
+      );
+
+      & label {
+        flex-shrink: 0;
+        white-space: nowrap;
+      }
+    }
+
+    /*
+      スクロール位置に合わせて、ぼかす端を切り替える（スクロール駆動アニメーション）。
+      左端にいるときは右だけ、途中は両方、右端まで行ったら左だけをぼかす
+    */
+    @supports (animation-timeline: scroll()) {
+      .scroll-on-narrow {
+        mask-image: linear-gradient(
+          to right,
+          transparent,
+          black var(--fade-start),
+          black calc(100% - var(--fade-end)),
+          transparent
+        );
+        /* アニメーションが始まる前は、右端だけぼかしておく */
+        --fade-start: 0px;
+        --fade-end: var(--fade);
+        animation: scroll-fade linear both;
+        animation-timeline: scroll(self inline);
+      }
+    }
+  }
+
+  /* ぼかしの幅をなめらかに変えるため、型を登録する（登録しないと途中で一気に切り替わる） */
+  @property --fade-start {
+    syntax: '<length>';
+    inherits: false;
+    initial-value: 0px;
+  }
+  @property --fade-end {
+    syntax: '<length>';
+    inherits: false;
+    initial-value: 0px;
+  }
+  @keyframes scroll-fade {
+    0% {
+      --fade-start: 0px;
+      --fade-end: var(--fade);
+    }
+    10% {
+      --fade-start: var(--fade);
+    }
+    90% {
+      --fade-end: var(--fade);
+    }
+    100% {
+      --fade-start: var(--fade);
+      --fade-end: 0px;
+    }
+  }
+</style>
