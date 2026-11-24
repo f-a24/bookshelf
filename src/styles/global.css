@@ -3,7 +3,7 @@
   - 色・書体・動きは、すべてこの :root のトークンを通して使う（部品の中に色を直接書かない）
   - 色は OKLCH。暗い部屋の「紙」を土台に、明るさを1段ずつ上げた面を重ねる
   - 差し色は真鍮の1色だけ。選択中のチップ・フォーカスなど、合図にだけ使う
-  例外: 背景の図書館の絵（html と body::before / ::after）は、絵そのものの色として直接書く
+  背景の図書館の部屋（LibraryRoom.astro）の色は、その部品の中でまとめて定義する
 */
 
 :root {
@@ -78,114 +78,9 @@
   color-scheme: dark;
 }
 
-/*
-  背景は、古い図書館の通路を CSS だけで描く。
-  html に天井・奥の窓の光・床の灯りを描き、body の ::before / ::after で
-  左右の壁の書架を奥へ遠ざかるように傾けて置く（どちらも画面に固定する）
-*/
+/* 背景の図書館の部屋は LibraryRoom.astro で描く。ここでは部屋が出るまでの下地の色だけ塗る */
 html {
-  background:
-    /* 奥の窓から差し込む光 */
-    radial-gradient(
-      ellipse 16% 24% at 50% 30%,
-      rgb(255 238 205 / 70%),
-      rgb(255 205 140 / 22%) 45%,
-      transparent 75%
-    ),
-    /* 床に落ちる灯り（左右の手前と、通路の奥） */
-    radial-gradient(
-        ellipse 22% 9% at 24% 92%,
-        rgb(255 168 78 / 38%),
-        transparent 70%
-      ),
-    radial-gradient(
-      ellipse 22% 9% at 76% 92%,
-      rgb(255 168 78 / 38%),
-      transparent 70%
-    ),
-    radial-gradient(
-      ellipse 12% 22% at 50% 70%,
-      rgb(255 214 150 / 22%),
-      transparent 70%
-    ),
-    /* 天井の梁 */
-    repeating-linear-gradient(
-        180deg,
-        rgb(0 0 0 / 40%) 0 4px,
-        transparent 4px 34px
-      )
-      top / 100% 26% no-repeat,
-    /* 天井（暗い）→ 奥の壁 → 磨かれた床（灯りを映す） */
-    linear-gradient(
-        180deg,
-        #120a05 0%,
-        #2a1a0e 26%,
-        #3a2616 44%,
-        #2b1a0e 62%,
-        #4a301b 63%,
-        #2c1c10 85%,
-        #1c1108 100%
-      );
-  background-attachment: fixed;
   background-color: var(--color-paper);
-}
-
-/* 左右の壁の書架 */
-body::before,
-body::after {
-  content: '';
-  position: fixed;
-  inset-block: 0;
-  z-index: -1;
-  width: 50vw;
-  pointer-events: none;
-  background:
-    /* 奥ほど暗くする */
-    linear-gradient(var(--fade-to), transparent 10%, rgb(10 5 2 / 85%) 100%),
-    /* 棚板（暗い隙間・本・棚板の順に繰り返す） */
-    repeating-linear-gradient(
-        180deg,
-        rgb(14 8 4 / 92%) 0 14px,
-        transparent 14px 80px,
-        #4a2c16 80px 84px,
-        #26150a 84px 96px
-      ),
-    /* 背表紙の金の帯 */
-    repeating-linear-gradient(
-        180deg,
-        transparent 0 28px,
-        rgb(214 172 92 / 30%) 28px 30px,
-        transparent 30px 64px,
-        rgb(214 172 92 / 22%) 64px 66px,
-        transparent 66px 96px
-      ),
-    /* 背表紙（革の色を、太さを変えて並べる） */
-    repeating-linear-gradient(
-        90deg,
-        #6e3b1f 0 7px,
-        #9c6b38 7px 12px,
-        #4a2a16 12px 14px,
-        #b8864c 14px 21px,
-        #7d2e1f 21px 26px,
-        #8b5a2b 26px 34px,
-        #3a2010 34px 36px,
-        #a7773f 36px 42px,
-        #5c3018 42px 48px
-      );
-  /* 手前（画面の端）を軸にして、奥へ倒す */
-  transform: perspective(900px) rotateY(var(--wall-angle));
-}
-body::before {
-  --wall-angle: 58deg;
-  --fade-to: to right;
-  inset-inline-start: 0;
-  transform-origin: left center;
-}
-body::after {
-  --wall-angle: -58deg;
-  --fade-to: to left;
-  inset-inline-end: 0;
-  transform-origin: right center;
 }
 
 /* 横にはみ出したものがあっても、ページ全体を横にスクロールさせない（hidden と違い sticky を壊さない） */

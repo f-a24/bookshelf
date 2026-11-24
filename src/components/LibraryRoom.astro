@@ -1,0 +1,328 @@
+---
+/**
+ * 背景の図書館。
+ * 真ん中の通路の両側に、書架の列が奥へ向かって並び、
+ * 頭上には格天井とアーチの梁が続き、突き当たりに明るい窓がある。
+ * 床・天井・左右の壁・奥の壁を CSS の 3D 変形で箱のように組み、
+ * その中に、正面を向いた書架とアーチを奥行きをずらして置く（画面に固定する）。
+ * 飾りなので、読み上げソフトには読ませない
+ */
+
+/** 奥から何列目までアーチと書架を並べるか */
+const ROWS = 6;
+/**
+ * 3D で置いても、重なりは書いた順で決まる（後に書いたものが手前に描かれる）。
+ * そのため、奥の列から手前の列の順に並べる
+ */
+const rows = Array.from({ length: ROWS }, (_, i) => ROWS - 1 - i);
+---
+
+<div class="room" aria-hidden="true">
+  <div class="face back"></div>
+  <div class="face left"></div>
+  <div class="face right"></div>
+  <div class="face floor"></div>
+  <div class="face ceiling"></div>
+  {rows.map(i => (
+    <>
+      <div class="arch" style={`--i: ${i}`} />
+      <div class="stall stall-left" style={`--i: ${i}`} />
+      <div class="stall stall-right" style={`--i: ${i}`} />
+    </>
+  ))}
+  <!-- WebGL2 が使えるときだけ、CSS の部屋の上に、光と影まで描いた図書館を重ねる -->
+  <canvas class="gl" data-library-gl></canvas>
+</div>
+
+<script>
+  import { startLibrary } from '../scripts/library-gl';
+
+  const canvas = document.querySelector<HTMLCanvasElement>('[data-library-gl]');
+  if (canvas) startLibrary(canvas);
+</script>
+
+<style>
+  .room {
+    /* ---- 色 ---- */
+    --room-dark: oklch(12% 0.012 50); /* 書架のすき間の暗がり */
+    --room-plaster: oklch(40% 0.03 80); /* 漆喰の壁 */
+    --room-frieze: oklch(32% 0.04 150); /* 壁の上の帯 */
+    --room-beam: oklch(20% 0.025 50); /* 天井の梁・アーチ */
+    --room-coffer: oklch(38% 0.06 80); /* 格天井の板（金） */
+    --room-coffer-mark: oklch(31% 0.05 35); /* 格天井の紋（赤） */
+    --room-coffer-light: oklch(48% 0.04 85); /* 格天井の紋の中 */
+    --room-window: oklch(96% 0.02 230); /* 突き当たりの窓 */
+    --room-window-glow: oklch(88% 0.04 220 / 0.45);
+    --room-floor: oklch(40% 0.035 75); /* 石の床 */
+    --room-floor-shine: oklch(78% 0.05 80 / 0.3); /* 床に映る窓の光 */
+    --room-wood: oklch(24% 0.03 45); /* 書架の木 */
+    --room-wood-edge: oklch(17% 0.025 45);
+    --room-shade: oklch(6% 0.01 50 / 0.7); /* 画面の端を暗くする影 */
+    --book-1: oklch(32% 0.05 45);
+    --book-2: oklch(40% 0.06 60);
+    --book-3: oklch(28% 0.06 30);
+    --book-4: oklch(48% 0.05 75);
+    --book-5: oklch(21% 0.025 50);
+    --book-6: oklch(36% 0.045 40);
+
+    /* ---- 形 ---- */
+    --depth: 1800px; /* 部屋の奥行き */
+    --aisle: 11vw; /* 通路の幅の半分 */
+    --stall-gap: 260px; /* 書架の列の間隔 */
+    --stall-first: 160px; /* いちばん手前の書架までの距離 */
+    --stall-depth: 110px; /* 書架の厚み（通路側に見える側板の幅） */
+    --stall-height: 60%; /* 書架の高さ（画面の高さに対して） */
+
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    overflow: clip;
+    pointer-events: none;
+    background: var(--room-dark);
+    perspective: 900px;
+    perspective-origin: 50% 46%;
+  }
+
+  /* WebGL の図書館。描き終わるまでは透明にしておき、描けたらふわっと出す */
+  .gl {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    transition: opacity var(--dur-long) var(--ease-out);
+
+    &[data-ready] {
+      opacity: 1;
+    }
+  }
+  /*
+    WebGL の図書館が出し終わったら（JS が data-gl-shown を付ける）、下の CSS の部屋は隠す。
+    3D 変形した面が透けて見えるのを防ぎ、描く手間も省く
+  */
+  .room[data-gl-shown] > :not(.gl) {
+    visibility: hidden;
+  }
+
+  /* 画面の端ほど暗くして、手前の本棚に目が行くようにする */
+  .room::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    background: radial-gradient(
+      ellipse 70% 70% at 50% 46%,
+      transparent 45%,
+      var(--room-shade)
+    );
+  }
+
+  .face,
+  .arch,
+  .stall {
+    position: absolute;
+  }
+
+  /* ---- 箱（奥の壁・左右の壁・床・天井） ---- */
+
+  /* 奥の壁：アーチ形の明るい窓 */
+  .back {
+    inset: 0;
+    transform: translateZ(calc(var(--depth) * -1));
+    background:
+      radial-gradient(
+        ellipse 9% 7% at 50% 38%,
+        var(--room-window) 0 70%,
+        transparent 72%
+      ),
+      linear-gradient(
+          90deg,
+          transparent 41%,
+          var(--room-window) 41% 59%,
+          transparent 59%
+        )
+        50% 100% / 100% 58% no-repeat,
+      radial-gradient(
+        ellipse 22% 38% at 50% 55%,
+        var(--room-window-glow),
+        transparent 70%
+      ),
+      var(--room-plaster);
+  }
+
+  /* 左右の壁：漆喰に、上のほうだけ帯を1本通す */
+  .left,
+  .right {
+    top: 0;
+    width: var(--depth);
+    height: 100%;
+    background:
+      linear-gradient(
+        180deg,
+        transparent 9%,
+        var(--room-frieze) 9% 11%,
+        transparent 11%
+      ),
+      var(--room-plaster);
+  }
+  .left {
+    left: 0;
+    transform-origin: left center;
+    transform: rotateY(90deg);
+  }
+  .right {
+    right: 0;
+    transform-origin: right center;
+    transform: rotateY(-90deg);
+  }
+
+  /* 床：石の床に、突き当たりの窓の光が通路に沿って映る */
+  .floor {
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    height: var(--depth);
+    transform-origin: bottom center;
+    transform: rotateX(90deg);
+    background:
+      linear-gradient(
+        90deg,
+        transparent 38%,
+        var(--room-floor-shine) 50%,
+        transparent 62%
+      ),
+      linear-gradient(180deg, var(--room-floor-shine), transparent 50%),
+      var(--room-floor);
+  }
+
+  /* 天井：梁で区切った格天井。ます目ごとに金の板と、赤い紋を置く */
+  .ceiling {
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: var(--depth);
+    transform-origin: top center;
+    transform: rotateX(-90deg);
+    background:
+      repeating-linear-gradient(
+        90deg,
+        var(--room-beam) 0 14px,
+        transparent 14px 160px
+      ),
+      repeating-linear-gradient(
+        180deg,
+        var(--room-beam) 0 14px,
+        transparent 14px 150px
+      ),
+      radial-gradient(
+          ellipse 20% 24% at 50% 50%,
+          var(--room-coffer-light) 0 40%,
+          var(--room-coffer-mark) 41% 100%,
+          transparent 101%
+        )
+        7px 7px / 160px 150px,
+      var(--room-coffer);
+  }
+
+  /* ---- 通路をまたぐアーチの梁（奥へ等間隔に並べる） ---- */
+  .arch {
+    inset: 0 0 auto;
+    height: 46%;
+    transform: translateZ(
+      calc((var(--stall-first) + var(--i) * var(--stall-gap)) * -1)
+    );
+    background:
+      /* アーチの弧 */
+      radial-gradient(
+        ellipse 44% 78% at 50% 100%,
+        transparent 92%,
+        var(--room-beam) 92.5% 99%,
+        transparent 99.5%
+      ),
+      /* 弧の上を水平に渡る梁 */
+      linear-gradient(
+          180deg,
+          transparent 20%,
+          var(--room-beam) 20% 25%,
+          transparent 25%
+        );
+  }
+
+  /* ---- 書架（通路の両側に、正面を向けて奥へ並べる） ---- */
+  .stall {
+    bottom: 0;
+    width: calc(50% - var(--aisle));
+    height: var(--stall-height);
+    transform: translateZ(
+      calc((var(--stall-first) + var(--i) * var(--stall-gap)) * -1)
+    );
+    /* 通路側の側板（::after）も同じ 3D 空間に置く */
+    transform-style: preserve-3d;
+    background:
+      /* 上の笠木 */
+      linear-gradient(180deg, var(--room-wood-edge) 0 18px, transparent 18px),
+      /* 縦の仕切り */
+      repeating-linear-gradient(
+          90deg,
+          var(--room-wood) 0 10px,
+          transparent 10px 150px
+        ),
+      /* 棚板と、その上の暗い隙間 */
+      repeating-linear-gradient(
+          180deg,
+          var(--room-wood) 0 10px,
+          var(--room-dark) 10px 22px,
+          transparent 22px 76px
+        ),
+      /* 背表紙 */
+      repeating-linear-gradient(
+          90deg,
+          var(--book-1) 0 9px,
+          var(--book-2) 9px 16px,
+          var(--book-5) 16px 18px,
+          var(--book-4) 18px 26px,
+          var(--book-3) 26px 33px,
+          var(--book-6) 33px 42px,
+          var(--book-5) 42px 44px,
+          var(--book-2) 44px 51px,
+          var(--book-1) 51px 58px
+        );
+    background-position: 0 6px;
+  }
+  .stall-left {
+    left: 0;
+  }
+  .stall-right {
+    right: 0;
+  }
+
+  /* 通路に面した側板：書架の内側の端から、奥へ向けて立てる */
+  .stall::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    width: var(--stall-depth);
+    height: 100%;
+    background:
+      linear-gradient(
+        90deg,
+        transparent 10px,
+        var(--room-wood-edge) 10px 12px,
+        transparent 12px calc(100% - 12px),
+        var(--room-wood-edge) calc(100% - 12px) calc(100% - 10px),
+        transparent calc(100% - 10px)
+      ),
+      var(--room-wood);
+  }
+  .stall-left::after {
+    right: 0;
+    transform-origin: right center;
+    transform: rotateY(-90deg);
+  }
+  .stall-right::after {
+    left: 0;
+    transform-origin: left center;
+    transform: rotateY(90deg);
+  }
+</style>
