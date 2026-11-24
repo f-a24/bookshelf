@@ -17,11 +17,12 @@ const FIRST_ROW = 5;
 
 /**
  * 表紙の画像の幅の候補と、表示される幅。
- * 本の高さは 180px（本棚の幅が 640px 未満では 120px）で、表紙はおよそ 0.78:1 なので、
- * 表示される幅はおよそ 141px / 94px。画面の解像度に合わせてブラウザが候補から選ぶ
+ * 本の高さは 180px（本棚の幅が 640px 未満では 120px）で、表紙の縦横比は本によって
+ * 1:1.2〜1:1.65 くらいなので、表示される幅は最大でおよそ 150px / 100px。
+ * 画面の解像度に合わせてブラウザが候補から選ぶ
  */
 const COVER_WIDTHS = [100, 150, 200, 300];
-const COVER_SIZES = '(width < 690px) 94px, 141px';
+const COVER_SIZES = '(width < 690px) 100px, 150px';
 ---
 
 <section class="bookcase" aria-labelledby="bookcase-heading">
@@ -166,6 +167,8 @@ const COVER_SIZES = '(width < 690px) 94px, 141px';
     background-size: 100% var(--row);
 
     & li:not([hidden]) {
+      /* 表紙の高さの上限を、このマスの幅（100cqi）から決めるため */
+      container-type: inline-size;
       display: flex;
       align-items: flex-end;
       justify-content: center;
@@ -219,16 +222,31 @@ const COVER_SIZES = '(width < 690px) 94px, 141px';
   .book img,
   .no-cover {
     display: block;
-    /* 縦横比を本の形（A判・B判に近い 1:1.414）に固定する */
-    width: auto;
-    height: var(--book-h);
-    aspect-ratio: 1 / 1.414;
-    max-width: calc(100% - 16px);
-    object-fit: cover;
     border-radius: var(--radius-book);
     box-shadow: var(--shadow-book);
   }
+  /*
+    表紙は切り抜かず、本ごとの縦横比のまま出す。
+    高さを決めておくと、幅は img の width / height 属性の比から決まるので、読み込む前から場所が確保される。
+    高さは本の高さにそろえるが、いちばん横長の表紙（縦横比 1:1.21）でも棚の幅に収まるよう、
+    棚1マスの幅（100cqi）でも上限をかける
+  */
+  .book img {
+    width: auto;
+    height: min(var(--book-h), (100cqi - 16px) * 1.21);
+    /*
+      幅の上限はマスの幅（100cqi）から決める。
+      100% にすると、表紙の幅に合わせて縮むボタンの幅が基準になり、表紙が必ず 16px 細くなってしまう
+    */
+    max-width: calc(100cqi - 16px);
+    /* これより横長の表紙が来ても、ゆがめずに収める */
+    object-fit: contain;
+  }
+  /* 表紙がない本は、A判・B判に近い 1:1.414 の布張りにする */
   .no-cover {
+    height: var(--book-h);
+    aspect-ratio: 1 / 1.414;
+    max-width: calc(100cqi - 16px);
     box-sizing: border-box;
     padding: 18% 12% 0 16%;
     overflow: clip;
